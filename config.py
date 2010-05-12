@@ -1,11 +1,11 @@
 # Name of the blog
-blog_name = 'My Blog'
+blog_name = "rctay's blog"
 
 # Your name (used for copyright info)
-author_name = 'the author'
+author_name = 'Tay Ray Chuan'
 
 # (Optional) slogan
-slogan = 'This is my blog'
+slogan = '&lt;a oh-so-witty line goes here&gt;'
 
 # The hostname this site will primarially serve off (used for Atom feeds)
 host = 'localhost:8080'
@@ -24,14 +24,6 @@ post_path_format = '/%(year)d/%(month)02d/%(slug)s'
 # A nested list of sidebar menus, for convenience. If this isn't versatile
 # enough, you can edit themes/default/base.html instead.
 sidebars = [
-  ('Blogroll', [
-    ('Nick Johnson', 'http://blog.notdot.net/'),
-    ('Bill Katz', 'http://www.billkatz.com/'),
-    ('Coding Horror', 'http://www.codinghorror.com/blog/'),
-    ('Craphound', 'http://craphound.com/'),
-    ('Neopythonic', 'http://www.neopythonic.blogspot.com/'),
-    ('Schneier on Security', 'http://www.schneier.com/blog/'),
-  ]),
 ]
 
 # Number of entries per page in indexes.
@@ -45,7 +37,7 @@ html_mime_type = "text/html; charset=utf-8"
 disqus_forum = None
 
 # Length (in words) of summaries, by default
-summary_length = 200
+summary_length = 50
 
 # If you want to use Google Analytics, enter your 'web property id' here
 analytics_id = None
@@ -65,7 +57,7 @@ google_sitemap_ping = True
 google_site_verification = None
 
 # Default markup language for entry bodies (defaults to html).
-default_markup = 'html'
+default_markup = 'markdown'
 
 # Syntax highlighting style for RestructuredText and Markdown,
 # one of 'manni', 'perldoc', 'borland', 'colorful', 'default', 'murphy',
