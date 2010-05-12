@@ -75,7 +75,7 @@ class BlogPost(db.Model):
       self.deps = {}
     for generator_class, deps in self.get_deps(regenerate=regenerate):
       for dep in deps:
-        if generator_class.can_defer:
+        if generator_class.can_defer and config.should_defer:
           deferred.defer(generator_class.generate_resource, None, dep)
         else:
           generator_class.generate_resource(self, dep)
@@ -91,7 +91,7 @@ class BlogPost(db.Model):
     # while calling PostContentGenerator.
     for generator_class, deps in self.get_deps(regenerate=True):
       for dep in deps:
-        if generator_class.can_defer:
+        if generator_class.can_defer and config.should_defer:
           deferred.defer(generator_class.generate_resource, None, dep)
         else:
           if generator_class.name() == 'PostContentGenerator':

@@ -4,7 +4,6 @@ import os
 import urllib
 from google.appengine.api import urlfetch
 from google.appengine.ext import db
-from google.appengine.ext import deferred
 
 import fix_path
 import config
@@ -193,8 +192,8 @@ class ListingContentGenerator(ContentGenerator):
                  config.html_mime_type)
 
     if more_posts:
-        deferred.defer(cls.generate_resource, None, resource, pagenum + 1,
-                       posts[-2].published)
+        utils.run_function(cls.generate_resource, None, resource,
+                           pagenum + 1, posts[-2].published)
 
 
 class IndexContentGenerator(ListingContentGenerator):

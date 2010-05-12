@@ -1,3 +1,6 @@
+debug = True
+should_defer = not debug
+
 # Name of the blog
 blog_name = 'My Blog'
 

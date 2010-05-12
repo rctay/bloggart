@@ -1,8 +1,10 @@
+import logging
 import os
 import re
 import unicodedata
 
 from google.appengine.ext import webapp
+from google.appengine.ext import deferred
 from google.appengine.ext.webapp.template import _swap_settings
 
 import django.conf
@@ -98,3 +100,13 @@ def ping_googlesitemap():
   response = urlfetch.fetch(google_url, '', urlfetch.GET)
   if response.status_code / 100 != 2:
     raise Warning("Google Sitemap ping failed", response.status_code, response.content)
+
+def run_function(func, *args, **kwargs):
+    if not config.should_defer:
+        pairs = [(k, kwargs[k]) for k in kwargs.keys() if not k.startswith('_')]
+        try:
+            func(*args, **dict(pairs))
+        except Exception, e:
+            logging.error(e)
+    else:
+        deferred.defer(func, *args, **kwargs)

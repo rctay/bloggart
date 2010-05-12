@@ -4,7 +4,6 @@ import hashlib
 from google.appengine.api import memcache
 from google.appengine.api.labs import taskqueue
 from google.appengine.ext import db
-from google.appengine.ext import deferred
 from google.appengine.datastore import entity_pb
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
@@ -80,7 +79,7 @@ def set(path, body, content_type, indexed=True, **kwargs):
     now = datetime.datetime.now().replace(second=0, microsecond=0)
     eta = now.replace(second=0, microsecond=0) + datetime.timedelta(seconds=65)
     if indexed:
-      deferred.defer(
+      utils.run_function(
           utils._regenerate_sitemap,
           _name='sitemap-%s' % (now.strftime('%Y%m%d%H%M'),),
           _eta=eta)
