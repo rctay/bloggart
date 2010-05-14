@@ -2,7 +2,6 @@ import datetime
 import logging
 import os
 
-from google.appengine.ext import deferred
 from google.appengine.ext import webapp
 
 import config
@@ -129,6 +128,8 @@ class PreviewHandler(BaseHandler):
 class RegenerateHandler(BaseHandler):
   def post(self):
     regen = post_deploy.PostRegenerator()
-    deferred.defer(regen.regenerate)
-    deferred.defer(post_deploy.post_deploy, post_deploy.BLOGGART_VERSION)
-    self.render_to_response("regenerating.html")
+    utils.run_function(regen.regenerate)
+    utils.run_function(post_deploy.post_deploy, post_deploy.BLOGGART_VERSION)
+    self.render_to_response(
+        "regenerating.html" if config.should_defer else "regenerated.html"
+    )

@@ -4,7 +4,6 @@ import os
 import urllib
 from google.appengine.api import urlfetch
 from google.appengine.ext import db
-from google.appengine.ext import deferred
 
 import fix_path
 import config
@@ -29,7 +28,7 @@ class ContentGenerator(object):
   @classmethod
   def get_resource_list(cls, post):
     """Returns a list of resources for the given post.
-    
+
     Args:
       post: A BlogPost entity.
     Returns:
@@ -40,7 +39,7 @@ class ContentGenerator(object):
   @classmethod
   def get_etag(cls, post):
     """Returns a string that changes if the resource requires regenerating.
-    
+
     Args:
       post: A BlogPost entity.
     Returns:
@@ -52,7 +51,7 @@ class ContentGenerator(object):
   @classmethod
   def generate_resource(cls, post, resource):
     """(Re)generates a resource for the provided post.
-    
+
     Args:
       post: A BlogPost entity.
       resource: A resource string as returned by get_resource_list.
@@ -62,9 +61,9 @@ class ContentGenerator(object):
 
 class PostContentGenerator(ContentGenerator):
   """ContentGenerator for the actual blog post itself."""
-  
+
   can_defer = False
-  
+
   @classmethod
   def get_resource_list(cls, post):
     return [post.key().id()]
@@ -75,14 +74,14 @@ class PostContentGenerator(ContentGenerator):
 
   @classmethod
   def get_prev_next(cls, post):
-    """Retrieves the chronologically previous and next post for this post""" 
+    """Retrieves the chronologically previous and next post for this post"""
     import models
-    
+
     q = models.BlogPost.all().order('-published')
     q.filter('published !=', datetime.datetime.max)# Filter drafts out
     q.filter('published <', post.published)
     prev = q.get()
-    
+
     q = models.BlogPost.all().order('published')
     q.filter('published !=', datetime.datetime.max)# Filter drafts out
     q.filter('published >', post.published)
@@ -115,13 +114,13 @@ generator_list.append(PostContentGenerator)
 
 class PostPrevNextContentGenerator(PostContentGenerator):
   """ContentGenerator for the blog posts chronologically before and after the blog post."""
-  
+
   @classmethod
   def get_resource_list(cls, post):
     prev, next = cls.get_prev_next(post)
     resource_list = [res.key().id() for res in (prev,next) if res is not None]
-    return resource_list 
-  
+    return resource_list
+
   @classmethod
   def generate_resource(cls, post, resource):
     import models
@@ -154,7 +153,7 @@ class ListingContentGenerator(ContentGenerator):
   @classmethod
   def _filter_query(cls, resource, q):
     """Applies filters to the BlogPost query.
-    
+
     Args:
       resource: The resource being generated.
       q: The query to act on.
@@ -193,8 +192,8 @@ class ListingContentGenerator(ContentGenerator):
                  config.html_mime_type)
 
     if more_posts:
-      deferred.defer(cls.generate_resource, None, resource, pagenum + 1,
-                     posts[-2].published)
+        utils.run_function(cls.generate_resource, None, resource,
+                           pagenum + 1, posts[-2].published)
 
 
 class IndexContentGenerator(ListingContentGenerator):
@@ -227,7 +226,7 @@ generator_list.append(TagsContentGenerator)
 
 class AtomContentGenerator(ContentGenerator):
   """ContentGenerator for Atom feeds."""
-  
+
   @classmethod
   def get_resource_list(cls, post):
     return ["atom"]

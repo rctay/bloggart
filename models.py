@@ -56,7 +56,7 @@ class BlogPost(db.Model):
   def summary_hash(self):
     val = (self.title, self.summary, self.tags, self.published)
     return hashlib.sha1(str(val)).hexdigest()
-  
+
   def publish(self):
     regenerate = False
     if not self.path:
@@ -70,19 +70,19 @@ class BlogPost(db.Model):
       self.put()
       # Force regenerate on new publish. Also helps with generation of
       # chronologically previous and next page.
-      regenerate = True 
+      regenerate = True
     if not self.deps:
       self.deps = {}
     for generator_class, deps in self.get_deps(regenerate=regenerate):
       for dep in deps:
-        if generator_class.can_defer:
+        if generator_class.can_defer and config.should_defer:
           deferred.defer(generator_class.generate_resource, None, dep)
         else:
           generator_class.generate_resource(self, dep)
     self.put()
 
   def remove(self):
-    if not self.is_saved():   
+    if not self.is_saved():
       return
     if not self.deps:
       self.deps = {}
@@ -91,15 +91,15 @@ class BlogPost(db.Model):
     # while calling PostContentGenerator.
     for generator_class, deps in self.get_deps(regenerate=True):
       for dep in deps:
-        if generator_class.can_defer:
+        if generator_class.can_defer and config.should_defer:
           deferred.defer(generator_class.generate_resource, None, dep)
         else:
           if generator_class.name() == 'PostContentGenerator':
             generator_class.generate_resource(self, dep, action='delete')
             self.delete()
           else:
-            generator_class.generate_resource(self, dep)  
-  
+            generator_class.generate_resource(self, dep)
+
   def get_deps(self, regenerate=False):
     for generator_class in generators.generator_list:
       new_deps = set(generator_class.get_resource_list(self))

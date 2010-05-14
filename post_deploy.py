@@ -2,7 +2,6 @@ import datetime
 import logging
 import os
 from google.appengine.api.labs import taskqueue
-from google.appengine.ext import deferred
 
 import config
 import models
@@ -27,10 +26,10 @@ class PostRegenerator(object):
           if (generator_class.__name__, dep) not in self.seen:
             logging.warn((generator_class.__name__, dep))
             self.seen.add((generator_class.__name__, dep))
-            deferred.defer(generator_class.generate_resource, None, dep)
+            utils.run_function(generator_class.generate_resource, None, dep)
       post.put()
     if len(posts) == batch_size:
-      deferred.defer(self.regenerate, batch_size, posts[-1].published)
+      utils.run_function(self.regenerate, batch_size, posts[-1].published)
 
 
 post_deploy_tasks = []
@@ -53,7 +52,7 @@ post_deploy_tasks.append(generate_static_pages([
 def regenerate_all(previous_version):
   if previous_version < BLOGGART_VERSION:
     regen = PostRegenerator()
-    deferred.defer(regen.regenerate)
+    utils.run_function(regen.regenerate)
 
 post_deploy_tasks.append(regenerate_all)
 
@@ -71,7 +70,7 @@ def run_deploy_task():
   """Attempts to run the per-version deploy task."""
   task_name = 'deploy-%s' % os.environ['CURRENT_VERSION_ID'].replace('.', '-')
   try:
-    deferred.defer(try_post_deploy, _name=task_name, _countdown=10)
+    utils.run_function(try_post_deploy, _name=task_name, _countdown=10)
   except (taskqueue.TaskAlreadyExistsError, taskqueue.TombstonedTaskError), e:
     pass
 
