@@ -46,11 +46,11 @@ summary_length = 50
 analytics_id = None
 
 # If you want to use PubSubHubbub, supply the hub URL to use here.
-hubbub_hub_url = 'http://pubsubhubbub.appspot.com/'
+hubbub_hub_url = None
 
 # If you want to ping Google Sitemap when your sitemap is generated change this to True, else False
 # see: http://www.google.com/support/webmasters/bin/answer.py?hl=en&answer=34609 for more information
-google_sitemap_ping = True
+google_sitemap_ping = False
 
 # If you want to use Google Site verification, go to
 # https://www.google.com/webmasters/tools/ , add your site, choose the 'upload
