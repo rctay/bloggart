@@ -12,6 +12,10 @@ handlers:
   script: deferred.py
   login: admin
 
+- url: /_ah/create_ver
+  script: create_ver.py
+  login: admin
+
 - url: /admin/.*
   script: admin.py
   login: admin
