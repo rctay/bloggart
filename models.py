@@ -1,4 +1,5 @@
 import aetycoon
+import datetime
 import hashlib
 import re
 from google.appengine.ext import db
@@ -15,6 +16,18 @@ if config.default_markup in markup.MARKUP_MAP:
   DEFAULT_MARKUP = config.default_markup
 else:
   DEFAULT_MARKUP = 'html'
+
+
+class BlogDate(db.Model):
+    """Contains a list of year-months for published blog posts."""
+
+    @classmethod
+    def get_entry(cls, post):
+        return '%d/%02d' % (post.published.year, post.published.month)
+
+    def as_date(self):
+        year, month = self.key().name().split("/")
+        return datetime.date(int(year), int(month), 1)
 
 
 class BlogPost(db.Model):
@@ -71,6 +84,9 @@ class BlogPost(db.Model):
       # Force regenerate on new publish. Also helps with generation of
       # chronologically previous and next page.
       regenerate = True
+
+    BlogDate.get_or_insert(BlogDate.get_entry(self))
+
     if not self.deps:
       self.deps = {}
     for generator_class, deps in self.get_deps(regenerate=regenerate):
