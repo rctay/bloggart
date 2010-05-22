@@ -246,7 +246,13 @@ class AtomContentGenerator(ContentGenerator):
         'posts': posts,
     }
     rendered = utils.render_template("atom.xml", template_vals)
-    static.set('/feeds/atom.xml', rendered,
+    # _fb_atom.xml is a private feed that is read behind the scenes by
+    # Feedburner, while atom.xml will be redirected to Feedburner
+    if config.feedburner_name:
+      feed_path = '_fb_atom.xml'
+    else:
+      feed_path = 'atom.xml'
+    static.set('/feeds/%s' % feed_path, rendered,
                'application/atom+xml; charset=utf-8', indexed=False)
     if config.hubbub_hub_url:
       cls.send_hubbub_ping(config.hubbub_hub_url)
