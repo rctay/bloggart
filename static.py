@@ -82,7 +82,7 @@ def set(path, body, content_type, indexed=True, **kwargs):
   content.put()
   memcache.replace(path, db.model_to_protobuf(content).Encode())
   try:
-    eta = now.replace(second=0, microsecond=0) + datetime.timedelta(seconds=65)
+    eta = now + datetime.timedelta(seconds=65)
     if indexed:
       deferred.defer(
           utils._regenerate_sitemap,
@@ -161,7 +161,7 @@ class StaticContentHandler(webapp.RequestHandler):
         last_seen = datetime.datetime.strptime(
             self.request.headers['If-Modified-Since'].split(';')[0],# IE8 '; length=XXXX' as extra arg bug
             HTTP_DATE_FMT)
-        if last_seen >= content.last_modified.replace(microsecond=0):
+        if last_seen >= content.last_modified:
           serve = False
       except ValueError, e:
         import logging
