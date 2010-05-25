@@ -289,8 +289,10 @@ class AtomContentGenerator(ContentGenerator):
     q = models.BlogPost.all().order('-updated')
     # Fetch the 10 most recently updated non-draft posts
     posts = list(itertools.islice((x for x in q if x.path), 10))
+    now = datetime.datetime.now().replace(second=0, microsecond=0)
     template_vals = {
         'posts': posts,
+        'updated': now,
     }
     rendered = utils.render_template("atom.xml", template_vals)
     # _fb_atom.xml is a private feed that is read behind the scenes by
@@ -300,7 +302,8 @@ class AtomContentGenerator(ContentGenerator):
     else:
       feed_path = 'atom.xml'
     static.set('/feeds/%s' % feed_path, rendered,
-               'application/atom+xml; charset=utf-8', indexed=False)
+               'application/atom+xml; charset=utf-8', indexed=False,
+               last_modified=now)
     if config.hubbub_hub_url:
       cls.send_hubbub_ping(config.hubbub_hub_url)
 
