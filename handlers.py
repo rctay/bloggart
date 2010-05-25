@@ -56,6 +56,7 @@ class BaseHandler(webapp.RequestHandler):
 
 class AdminHandler(BaseHandler):
   def get(self):
+    from generators import generator_list
     offset = int(self.request.get('start', 0))
     count = int(self.request.get('count', 20))
     posts = models.BlogPost.all().order('-published').fetch(count, offset)
@@ -66,6 +67,7 @@ class AdminHandler(BaseHandler):
         'prev_offset': max(0, offset - count),
         'next_offset': offset + count,
         'posts': posts,
+        'generators': [cls.__name__ for cls in generator_list],
     }
     self.render_to_response("index.html", template_vals)
 
@@ -127,8 +129,10 @@ class PreviewHandler(BaseHandler):
 
 class RegenerateHandler(BaseHandler):
   def post(self):
+    generators = self.request.get_all("generators")
+
     regen = post_deploy.PostRegenerator()
-    utils.run_function(regen.regenerate)
+    utils.run_function(regen.regenerate, classes=generators)
     utils.run_function(post_deploy.post_deploy, post_deploy.BLOGGART_VERSION)
     self.render_to_response(
         "regenerating.html" if config.should_defer else "regenerated.html"
