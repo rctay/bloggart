@@ -46,6 +46,8 @@ summary_length = 50
 analytics_id = None
 
 # If you want to use PubSubHubbub, supply the hub URL to use here.
+# Note that Feedburner supports PubSubHubbub via Pingshot, so you can disable
+# this and just use Feedburner.
 hubbub_hub_url = None
 
 # If you want to ping Google Sitemap when your sitemap is generated change this to True, else False
@@ -58,6 +60,9 @@ google_sitemap_ping = False
 # Note that you do not need to download the file provided - just enter its name
 # here.
 google_site_verification = None
+
+# The part that goes after http://feeds.feedburner.com/.
+feedburner_name = None
 
 # Default markup language for entry bodies (defaults to html).
 default_markup = 'markdown'

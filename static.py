@@ -153,6 +153,9 @@ class StaticContentHandler(webapp.RequestHandler):
           self.error(404)
           self.response.out.write(utils.render_template('404.html'))
           return
+    if path == '/feeds/atom.xml' and config.feedburner_name:
+      self.redirect("http://feeds.feedburner.com/%s" % config.feedburner_name)
+      return
     content = get(path)
     if not content:
       self.error(404)
