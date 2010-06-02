@@ -97,8 +97,9 @@ def try_post_deploy():
 
 def post_deploy(previous_version):
   """Carries out post-deploy functions, such as rendering static pages."""
-  for task in post_deploy_tasks:
-    task(previous_version)
+  if previous_version:
+    for task in post_deploy_tasks:
+      task(previous_version)
 
   new_version = models.VersionInfo(
       key_name=os.environ['CURRENT_VERSION_ID'],
