@@ -80,3 +80,6 @@ url_prefix = ''
 # Defines where the user is defined in the rel="me" of your pages.
 # This allows you to expand on your social graph.
 rel_me = None
+
+# The dotted module name of a concrete implementation of tzinfo.
+tzinfo_class = None

@@ -33,11 +33,12 @@ def format_post_path(post, num):
   slug = slugify(post.title)
   if num > 0:
     slug += "-" + str(num)
+  date = post.published_tz
   return config.post_path_format % {
       'slug': slug,
-      'year': post.published.year,
-      'month': post.published.month,
-      'day': post.published.day,
+      'year': date.year,
+      'month': date.month,
+      'day': date.day,
   }
 
 
@@ -110,3 +111,24 @@ def run_function(func, *args, **kwargs):
             logging.error(e)
     else:
         deferred.defer(func, *args, **kwargs)
+
+def tzinfo():
+  """
+  Returns an instance of a tzinfo implementation, as specified in
+  config.tzinfo_class; else, None.
+  """
+
+  if not config.tzinfo_class:
+    return None
+
+  str = config.tzinfo_class
+  i = str.rfind(".")
+
+  try:
+    # from str[:i] import str[i+1:]
+    klass_str = str[i+1:]
+    mod = __import__(str[:i], globals(), locals(), [klass_str])
+    klass = getattr(mod, klass_str)
+    return klass()
+  except ImportError:
+    return None
