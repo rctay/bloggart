@@ -193,8 +193,8 @@ class ListingContentGenerator(ContentGenerator):
                  config.html_mime_type)
 
     if more_posts:
-      deferred.defer(cls.generate_resource, None, resource, pagenum + 1,
-                     posts[-2].published)
+        deferred.defer(cls.generate_resource, None, resource, pagenum + 1,
+                       posts[-2].published)
 
 
 class IndexContentGenerator(ListingContentGenerator):
@@ -223,6 +223,54 @@ class TagsContentGenerator(ListingContentGenerator):
   def _filter_query(cls, resource, q):
     q.filter('normalized_tags =', resource)
 generator_list.append(TagsContentGenerator)
+
+
+class ArchivePageContentGenerator(ListingContentGenerator):
+    """
+    ContentGenerator for archive pages (a list of posts in a certain
+    year-month).
+    """
+
+    path = '/archive/%(resource)s/%(pagenum)d'
+    first_page_path = '/archive/%(resource)s/'
+
+    @classmethod
+    def get_resource_list(cls, post):
+        from models import BlogDate
+        return [BlogDate.get_entry(post)]
+generator_list.append(ArchivePageContentGenerator)
+
+
+class ArchiveIndexContentGenerator(ContentGenerator):
+    """
+    ContentGenerator for archive index (a list of year-month pairs).
+    """
+
+    @classmethod
+    def get_resource_list(cls, post):
+        return ["archive"]
+
+    @classmethod
+    def get_etag(cls, post):
+        return post.hash
+
+    @classmethod
+    def generate_resource(cls, post, resource):
+        from models import BlogDate
+
+        q = BlogDate.all().order('-__key__')
+        dates = [x.as_date() for x in q]
+        date_struct = {}
+        for date in dates:
+            date_struct.setdefault(date.year, []).append(date)
+
+        str = utils.render_template("archive.html", {
+            'generator_class': cls.__name__,
+            'dates': dates,
+            'date_struct': date_struct.values(),
+        })
+        static.set('/archive/', str, config.html_mime_type)
+generator_list.append(ArchiveIndexContentGenerator)
 
 
 class AtomContentGenerator(ContentGenerator):
