@@ -82,4 +82,4 @@ url_prefix = ''
 rel_me = None
 
 # The dotted module name of a concrete implementation of tzinfo.
-tzinfo_class = None
+tzinfo_class = 'timezones.sst.SST'
