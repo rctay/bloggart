@@ -31,7 +31,7 @@ class StaticContent(db.Model):
   body = db.BlobProperty()
   content_type = db.StringProperty()
   status = db.IntegerProperty(required=True, default=200)
-  last_modified = db.DateTimeProperty(required=True, auto_now=True)
+  last_modified = db.DateTimeProperty(required=True)
   etag = aetycoon.DerivedProperty(lambda x: hashlib.sha1(x.body).hexdigest())
   indexed = db.BooleanProperty(required=True, default=True)
   headers = db.StringListProperty()
@@ -68,17 +68,21 @@ def set(path, body, content_type, indexed=True, **kwargs):
   Returns:
     A StaticContent object.
   """
+  now = datetime.datetime.now().replace(second=0, microsecond=0)
+  defaults = {
+    "last_modified": now,
+  }
+  defaults.update(kwargs)
   content = StaticContent(
       key_name=path,
       body=body,
       content_type=content_type,
       indexed=indexed,
-      **kwargs)
+      **defaults)
   content.put()
   memcache.replace(path, db.model_to_protobuf(content).Encode())
   try:
-    now = datetime.datetime.now().replace(second=0, microsecond=0)
-    eta = now.replace(second=0, microsecond=0) + datetime.timedelta(seconds=65)
+    eta = now + datetime.timedelta(seconds=65)
     if indexed:
       deferred.defer(
           utils._regenerate_sitemap,
@@ -157,7 +161,7 @@ class StaticContentHandler(webapp.RequestHandler):
         last_seen = datetime.datetime.strptime(
             self.request.headers['If-Modified-Since'].split(';')[0],# IE8 '; length=XXXX' as extra arg bug
             HTTP_DATE_FMT)
-        if last_seen >= content.last_modified.replace(microsecond=0):
+        if last_seen >= content.last_modified:
           serve = False
       except ValueError, e:
         import logging
