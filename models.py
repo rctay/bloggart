@@ -10,6 +10,12 @@ import markup
 import static
 import utils
 
+# Fix sys.path
+import fix_path
+fix_path.fix_sys_path()
+
+from timezones.utc import UTC
+
 
 if config.default_markup in markup.MARKUP_MAP:
   DEFAULT_MARKUP = config.default_markup
@@ -28,6 +34,22 @@ class BlogPost(db.Model):
   published = db.DateTimeProperty()
   updated = db.DateTimeProperty(auto_now=False)
   deps = aetycoon.PickleProperty()
+
+  @property
+  def published_tz(self):
+    tz = utils.tzinfo()
+    if tz:
+      return self.published.replace(tzinfo=UTC()).astimezone(tz)
+    else:
+      return self.published
+
+  @property
+  def updated_tz(self):
+    tz = utils.tzinfo()
+    if tz:
+      return self.updated.replace(tzinfo=UTC()).astimezone(tz)
+    else:
+      return self.updated
 
   @aetycoon.TransformProperty(tags)
   def normalized_tags(tags):
