@@ -11,6 +11,12 @@ handlers:
 - url: /favicon.ico
   script: empty_favicon.py
 
+- url: /apple-touch-icon.png
+  script: empty_favicon.py
+
+- url: /apple-touch-icon-precomposed.png
+  script: empty_favicon.py
+
 - url: /_ah/queue/deferred
   script: deferred.py
   login: admin
