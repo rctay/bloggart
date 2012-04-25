@@ -4,8 +4,6 @@ import logging
 import re
 import urllib
 from xml.etree import ElementTree
-from django.utils import simplejson
-from django.utils import html
 from google.appengine.api import urlfetch
 from google.appengine.ext import db
 from google.appengine.ext import deferred
@@ -14,6 +12,9 @@ import config
 import fix_path
 import models
 import post_deploy
+
+from django.utils import simplejson
+from django.utils import html
 
 import pygments
 import pygments.lexers
