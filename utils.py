@@ -4,13 +4,15 @@ import unicodedata
 
 from google.appengine.api import memcache
 from google.appengine.ext import webapp
+
+import config
+
+# requires django internally
 from google.appengine.ext.webapp.template import _swap_settings
 
 import django.conf
 from django import template
 from django.template import loader
-
-import config
 
 BASE_DIR = os.path.dirname(__file__)
 
