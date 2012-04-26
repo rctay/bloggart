@@ -5,19 +5,16 @@
 
     Lexers for assembly languages.
 
-    :copyright: Copyright 2006-2009 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2012 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
 
 import re
-try:
-    set
-except NameError:
-    from sets import Set as set
 
 from pygments.lexer import RegexLexer, include, bygroups, using, DelegatingLexer
 from pygments.lexers.compiled import DLexer, CppLexer, CLexer
-from pygments.token import *
+from pygments.token import Text, Name, Number, String, Comment, Punctuation, \
+     Other, Keyword, Operator
 
 __all__ = ['GasLexer', 'ObjdumpLexer','DObjdumpLexer', 'CppObjdumpLexer',
            'CObjdumpLexer', 'LlvmLexer', 'NasmLexer']
@@ -76,6 +73,7 @@ class GasLexer(RegexLexer):
             ('%' + identifier, Name.Variable),
             # Numeric constants
             ('$'+number, Number.Integer),
+            (r"$'(.|\\')'", String.Char),
             (r'[\r\n]+', Text, '#pop'),
             (r'#.*?$', Comment, '#pop'),
             include('punctuation'),
@@ -92,7 +90,11 @@ class GasLexer(RegexLexer):
     }
 
     def analyse_text(text):
-        return re.match(r'^\.\w+', text, re.M)
+        if re.match(r'^\.(text|data|section)', text, re.M):
+            return True
+        elif re.match(r'^\.\w+', text, re.M):
+            return 0.1
+
 
 class ObjdumpLexer(RegexLexer):
     """
@@ -134,17 +136,17 @@ class ObjdumpLexer(RegexLexer):
             ('( *)('+hex+r'+:)(\t)((?:'+hex+hex+' )+)$',
                 bygroups(Text, Name.Label, Text, Number.Hex)),
             # Skipped a few bytes
-            ('\t\.\.\.$', Text),
+            (r'\t\.\.\.$', Text),
             # Relocation line
             # (With offset)
-            ('(\t\t\t)('+hex+'+:)( )([^\t]+)(\t)(.*?)([-+])(0x' + hex + '+)$',
+            (r'(\t\t\t)('+hex+r'+:)( )([^\t]+)(\t)(.*?)([-+])(0x' + hex + '+)$',
                 bygroups(Text, Name.Label, Text, Name.Property, Text,
                          Name.Constant, Punctuation, Number.Hex)),
             # (Without offset)
-            ('(\t\t\t)('+hex+'+:)( )([^\t]+)(\t)(.*?)$',
+            (r'(\t\t\t)('+hex+r'+:)( )([^\t]+)(\t)(.*?)$',
                 bygroups(Text, Name.Label, Text, Name.Property, Text,
                          Name.Constant)),
-            ('[^\n]+\n', Other)
+            (r'[^\n]+\n', Other)
         ]
     }
 
@@ -199,7 +201,7 @@ class LlvmLexer(RegexLexer):
 
     #: optional Comment or Whitespace
     string = r'"[^"]*?"'
-    identifier = r'([a-zA-Z$._][a-zA-Z$._0-9]*|' + string + ')'
+    identifier = r'([-a-zA-Z$._][-a-zA-Z$._0-9]*|' + string + ')'
 
     tokens = {
         'root': [
@@ -211,14 +213,17 @@ class LlvmLexer(RegexLexer):
             include('keyword'),
 
             (r'%' + identifier, Name.Variable),#Name.Identifier.Local),
-            (r'@' + identifier, Name.Constant),#Name.Identifier.Global),
+            (r'@' + identifier, Name.Variable.Global),#Name.Identifier.Global),
             (r'%\d+', Name.Variable.Anonymous),#Name.Identifier.Anonymous),
+            (r'@\d+', Name.Variable.Global),#Name.Identifier.Anonymous),
+            (r'!' + identifier, Name.Variable),
+            (r'!\d+', Name.Variable.Anonymous),
             (r'c?' + string, String),
 
             (r'0[xX][a-fA-F0-9]+', Number),
             (r'-?\d+(?:[.]\d+)?(?:[eE][-+]?\d+(?:[.]\d+)?)?', Number),
 
-            (r'[=<>{}\[\]()*.,]|x\b', Punctuation)
+            (r'[=<>{}\[\]()*.,!]|x\b', Punctuation)
         ],
         'whitespace': [
             (r'(\n|\s)+', Text),
@@ -226,36 +231,56 @@ class LlvmLexer(RegexLexer):
         ],
         'keyword': [
             # Regular keywords
-            (r'(void|label|float|double|opaque'
-             r'|to'
-             r'|alias|type'
-             r'|zeroext|signext|inreg|sret|noalias|noreturn|nounwind|nest'
-             r'|module|asm|target|datalayout|triple'
-             r'|true|false|null|zeroinitializer|undef'
-             r'|global|internal|external|linkonce|weak|appending|extern_weak'
-             r'|dllimport|dllexport'
-             r'|ccc|fastcc|coldcc|cc|tail'
-             r'|default|hidden|protected'
-             r'|thread_local|constant|align|section'
-             r'|define|declare'
+            (r'(begin|end'
+             r'|true|false'
+             r'|declare|define'
+             r'|global|constant'
 
-             # Statements & expressions
-             r'|trunc|zext|sext|fptrunc|fpext|fptoui|fptosi|uitofp|sitofp'
-             r'|ptrtoint|inttoptr|bitcast|getelementptr|select|icmp|fcmp'
-             r'|extractelement|insertelement|shufflevector'
-             r'|sideeffect|volatile'
-             r'|ret|br|switch|invoke|unwind|unreachable'
-             r'|add|sub|mul|udiv|sdiv|fdiv|urem|srem|frem'
-             r'|shl|lshr|ashr|and|or|xor'
-             r'|malloc|free|alloca|load|store'
-             r'|phi|call|va_arg|va_list'
+             r'|private|linker_private|internal|available_externally|linkonce'
+             r'|linkonce_odr|weak|weak_odr|appending|dllimport|dllexport'
+             r'|common|default|hidden|protected|extern_weak|external'
+             r'|thread_local|zeroinitializer|undef|null|to|tail|target|triple'
+             r'|deplibs|datalayout|volatile|nuw|nsw|exact|inbounds|align'
+             r'|addrspace|section|alias|module|asm|sideeffect|gc|dbg'
 
-             # Comparison condition codes for icmp
-             r'|eq|ne|ugt|uge|ult|ule|sgt|sge|slt|sle'
-             # Ditto for fcmp: (minus keywords mentioned in other contexts)
-             r'|oeq|ogt|oge|olt|ole|one|ord|ueq|ugt|uge|une|uno'
+             r'|ccc|fastcc|coldcc|x86_stdcallcc|x86_fastcallcc|arm_apcscc'
+             r'|arm_aapcscc|arm_aapcs_vfpcc'
+
+             r'|cc|c'
+
+             r'|signext|zeroext|inreg|sret|nounwind|noreturn|noalias|nocapture'
+             r'|byval|nest|readnone|readonly'
+
+             r'|inlinehint|noinline|alwaysinline|optsize|ssp|sspreq|noredzone'
+             r'|noimplicitfloat|naked'
+
+             r'|type|opaque'
+
+             r'|eq|ne|slt|sgt|sle'
+             r'|sge|ult|ugt|ule|uge'
+             r'|oeq|one|olt|ogt|ole'
+             r'|oge|ord|uno|ueq|une'
+             r'|x'
+
+             # instructions
+             r'|add|fadd|sub|fsub|mul|fmul|udiv|sdiv|fdiv|urem|srem|frem|shl'
+             r'|lshr|ashr|and|or|xor|icmp|fcmp'
+
+             r'|phi|call|trunc|zext|sext|fptrunc|fpext|uitofp|sitofp|fptoui'
+             r'fptosi|inttoptr|ptrtoint|bitcast|select|va_arg|ret|br|switch'
+             r'|invoke|unwind|unreachable'
+
+             r'|malloc|alloca|free|load|store|getelementptr'
+
+             r'|extractelement|insertelement|shufflevector|getresult'
+             r'|extractvalue|insertvalue'
 
              r')\b', Keyword),
+
+            # Types
+            (r'void|float|double|x86_fp80|fp128|ppc_fp128|label|metadata',
+             Keyword.Type),
+
             # Integer types
             (r'i[1-9]\d*', Keyword)
         ]
@@ -272,19 +297,20 @@ class NasmLexer(RegexLexer):
     mimetypes = ['text/x-nasm']
 
     identifier = r'[a-zA-Z$._?][a-zA-Z0-9$._?#@~]*'
-    hexn = r'(?:0[xX][0-9a-fA-F]+|$0[0-9a-fA-F]*|[0-9a-fA-F]+h)'
+    hexn = r'(?:0[xX][0-9a-fA-F]+|$0[0-9a-fA-F]*|[0-9]+[0-9a-fA-F]*h)'
     octn = r'[0-7]+q'
     binn = r'[01]+b'
     decn = r'[0-9]+'
     floatn = decn + r'\.e?' + decn
-    string = r'"(\\"|[^"])*"|' + r"'(\\'|[^'])*'"
+    string = r'"(\\"|[^"\n])*"|' + r"'(\\'|[^'\n])*'|" + r"`(\\`|[^`\n])*`"
     declkw = r'(?:res|d)[bwdqt]|times'
     register = (r'[a-d][lh]|e?[a-d]x|e?[sb]p|e?[sd]i|[c-gs]s|st[0-7]|'
                 r'mm[0-7]|cr[0-4]|dr[0-367]|tr[3-7]')
     wordop = r'seg|wrt|strict'
     type = r'byte|[dq]?word'
     directives = (r'BITS|USE16|USE32|SECTION|SEGMENT|ABSOLUTE|EXTERN|GLOBAL|'
-                  r'COMMON|CPU|GROUP|UPPERCASE|IMPORT|EXPORT|LIBRARY|MODULE')
+                  r'ORG|ALIGN|STRUC|ENDSTRUC|COMMON|CPU|GROUP|UPPERCASE|IMPORT|'
+                  r'EXPORT|LIBRARY|MODULE')
 
     flags = re.IGNORECASE | re.MULTILINE
     tokens = {
@@ -292,10 +318,10 @@ class NasmLexer(RegexLexer):
             include('whitespace'),
             (r'^\s*%', Comment.Preproc, 'preproc'),
             (identifier + ':', Name.Label),
-            (directives, Keyword, 'instruction-args'),
-            (r'(%s)\s+(equ)' % identifier,
-                bygroups(Name.Constant, Keyword.Declaration),
+            (r'(%s)(\s+)(equ)' % identifier,
+                bygroups(Name.Constant, Keyword.Declaration, Keyword.Declaration),
                 'instruction-args'),
+            (directives, Keyword, 'instruction-args'),
             (declkw, Keyword.Declaration, 'instruction-args'),
             (identifier, Name.Function, 'instruction-args'),
             (r'[\r\n]+', Text)
