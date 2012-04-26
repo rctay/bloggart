@@ -57,7 +57,7 @@ def render_rst(content):
 
 def render_markdown(content):
   md = markdown.Markdown()
-  md.textPreprocessors.insert(0, markdown_processor.CodeBlockPreprocessor())
+  md.textPreprocessors.insert(0, markdown_processor.CodeBlockPreprocessor(md))
   return md.convert(content)
 
 
