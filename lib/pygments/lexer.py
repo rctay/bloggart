@@ -5,15 +5,10 @@
 
     Base lexer classes.
 
-    :copyright: Copyright 2006-2009 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2012 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
 import re
-
-try:
-    set
-except NameError:
-    from sets import Set as set
 
 from pygments.filter import apply_filters, Filter
 from pygments.filters import get_filter_by_name
@@ -23,8 +18,14 @@ from pygments.util import get_bool_opt, get_int_opt, get_list_opt, \
 
 
 __all__ = ['Lexer', 'RegexLexer', 'ExtendedRegexLexer', 'DelegatingLexer',
-           'LexerContext', 'include', 'flags', 'bygroups', 'using', 'this']
+           'LexerContext', 'include', 'bygroups', 'using', 'this']
 
+
+_encoding_map = [('\xef\xbb\xbf', 'utf-8'),
+                 ('\xff\xfe\0\0', 'utf-32'),
+                 ('\0\0\xfe\xff', 'utf-32be'),
+                 ('\xff\xfe', 'utf-16'),
+                 ('\xfe\xff', 'utf-16be')]
 
 _default_analyse = staticmethod(lambda x: 0.0)
 
@@ -51,6 +52,10 @@ class Lexer(object):
     ``stripall``
         Strip all leading and trailing whitespace from the input
         (default: False).
+    ``ensurenl``
+        Make sure that the input ends with a newline (default: True).  This
+        is required for some lexers that consume input linewise.
+        *New in Pygments 1.3.*
     ``tabsize``
         If given and greater than 0, expand tabs in the input (default: 0).
     ``encoding``
@@ -82,6 +87,7 @@ class Lexer(object):
         self.options = options
         self.stripnl = get_bool_opt(options, 'stripnl', True)
         self.stripall = get_bool_opt(options, 'stripall', False)
+        self.ensurenl = get_bool_opt(options, 'ensurenl', True)
         self.tabsize = get_int_opt(options, 'tabsize', 0)
         self.encoding = options.get('encoding', 'latin1')
         # self.encoding = options.get('inencoding', None) or self.encoding
@@ -142,8 +148,19 @@ class Lexer(object):
                     raise ImportError('To enable chardet encoding guessing, '
                                       'please install the chardet library '
                                       'from http://chardet.feedparser.org/')
-                enc = chardet.detect(text)
-                text = text.decode(enc['encoding'])
+                # check for BOM first
+                decoded = None
+                for bom, encoding in _encoding_map:
+                    if text.startswith(bom):
+                        decoded = unicode(text[len(bom):], encoding,
+                                          errors='replace')
+                        break
+                # no BOM found, so use chardet
+                if decoded is None:
+                    enc = chardet.detect(text[:1024]) # Guess using first 1KB
+                    decoded = unicode(text, enc.get('encoding') or 'utf-8',
+                                      errors='replace')
+                text = decoded
             else:
                 text = text.decode(self.encoding)
         # text now *is* a unicode string
@@ -155,7 +172,7 @@ class Lexer(object):
             text = text.strip('\n')
         if self.tabsize > 0:
             text = text.expandtabs(self.tabsize)
-        if not text.endswith('\n'):
+        if self.ensurenl and not text.endswith('\n'):
             text += '\n'
 
         def streamer():
@@ -274,12 +291,14 @@ def bygroups(*args):
                 if data:
                     yield match.start(i + 1), action, data
             else:
-                if ctx:
-                    ctx.pos = match.start(i + 1)
-                for item in action(lexer, _PseudoMatch(match.start(i + 1),
-                                   match.group(i + 1)), ctx):
-                    if item:
-                        yield item
+                data = match.group(i + 1)
+                if data is not None:
+                    if ctx:
+                        ctx.pos = match.start(i + 1)
+                    for item in action(lexer, _PseudoMatch(match.start(i + 1),
+                                       data), ctx):
+                        if item:
+                            yield item
         if ctx:
             ctx.pos = match.end()
     return callback
@@ -349,7 +368,53 @@ class RegexLexerMeta(LexerMeta):
     self.tokens on the first instantiation.
     """
 
+    def _process_regex(cls, regex, rflags):
+        """Preprocess the regular expression component of a token definition."""
+        return re.compile(regex, rflags).match
+
+    def _process_token(cls, token):
+        """Preprocess the token component of a token definition."""
+        assert type(token) is _TokenType or callable(token), \
+               'token type must be simple type or callable, not %r' % (token,)
+        return token
+
+    def _process_new_state(cls, new_state, unprocessed, processed):
+        """Preprocess the state transition action of a token definition."""
+        if isinstance(new_state, str):
+            # an existing state
+            if new_state == '#pop':
+                return -1
+            elif new_state in unprocessed:
+                return (new_state,)
+            elif new_state == '#push':
+                return new_state
+            elif new_state[:5] == '#pop:':
+                return -int(new_state[5:])
+            else:
+                assert False, 'unknown new state %r' % new_state
+        elif isinstance(new_state, combined):
+            # combine a new state from existing ones
+            tmp_state = '_tmp_%d' % cls._tmpname
+            cls._tmpname += 1
+            itokens = []
+            for istate in new_state:
+                assert istate != new_state, 'circular state ref %r' % istate
+                itokens.extend(cls._process_state(unprocessed,
+                                                  processed, istate))
+            processed[tmp_state] = itokens
+            return (tmp_state,)
+        elif isinstance(new_state, tuple):
+            # push more than one state
+            for istate in new_state:
+                assert (istate in unprocessed or
+                        istate in ('#pop', '#push')), \
+                       'unknown new state ' + istate
+            return new_state
+        else:
+            assert False, 'unknown new state def %r' % new_state
+
     def _process_state(cls, unprocessed, processed, state):
+        """Preprocess a single state definition."""
         assert type(state) is str, "wrong state name %r" % state
         assert state[0] != '#', "invalid state name %r" % state
         if state in processed:
@@ -360,60 +425,31 @@ class RegexLexerMeta(LexerMeta):
             if isinstance(tdef, include):
                 # it's a state reference
                 assert tdef != state, "circular state reference %r" % state
-                tokens.extend(cls._process_state(unprocessed, processed, str(tdef)))
+                tokens.extend(cls._process_state(unprocessed, processed,
+                                                 str(tdef)))
                 continue
 
             assert type(tdef) is tuple, "wrong rule def %r" % tdef
 
             try:
-                rex = re.compile(tdef[0], rflags).match
+                rex = cls._process_regex(tdef[0], rflags)
             except Exception, err:
                 raise ValueError("uncompilable regex %r in state %r of %r: %s" %
                                  (tdef[0], state, cls, err))
 
-            assert type(tdef[1]) is _TokenType or callable(tdef[1]), \
-                   'token type must be simple type or callable, not %r' % (tdef[1],)
+            token = cls._process_token(tdef[1])
 
             if len(tdef) == 2:
                 new_state = None
             else:
-                tdef2 = tdef[2]
-                if isinstance(tdef2, str):
-                    # an existing state
-                    if tdef2 == '#pop':
-                        new_state = -1
-                    elif tdef2 in unprocessed:
-                        new_state = (tdef2,)
-                    elif tdef2 == '#push':
-                        new_state = tdef2
-                    elif tdef2[:5] == '#pop:':
-                        new_state = -int(tdef2[5:])
-                    else:
-                        assert False, 'unknown new state %r' % tdef2
-                elif isinstance(tdef2, combined):
-                    # combine a new state from existing ones
-                    new_state = '_tmp_%d' % cls._tmpname
-                    cls._tmpname += 1
-                    itokens = []
-                    for istate in tdef2:
-                        assert istate != state, 'circular state ref %r' % istate
-                        itokens.extend(cls._process_state(unprocessed,
-                                                          processed, istate))
-                    processed[new_state] = itokens
-                    new_state = (new_state,)
-                elif isinstance(tdef2, tuple):
-                    # push more than one state
-                    for state in tdef2:
-                        assert (state in unprocessed or
-                                state in ('#pop', '#push')), \
-                               'unknown new state ' + state
-                    new_state = tdef2
-                else:
-                    assert False, 'unknown new state def %r' % tdef2
-            tokens.append((rex, tdef[1], new_state))
+                new_state = cls._process_new_state(tdef[2],
+                                                   unprocessed, processed)
+
+            tokens.append((rex, token, new_state))
         return tokens
 
     def process_tokendef(cls, name, tokendefs=None):
+        """Preprocess a dictionary of token definitions."""
         processed = cls._all_tokens[name] = {}
         tokendefs = tokendefs or cls.tokens[name]
         for state in tokendefs.keys():
@@ -421,7 +457,8 @@ class RegexLexerMeta(LexerMeta):
         return processed
 
     def __call__(cls, *args, **kwds):
-        if not hasattr(cls, '_tokens'):
+        """Instantiate cls after preprocessing its token definitions."""
+        if '_tokens' not in cls.__dict__:
             cls._all_tokens = {}
             cls._tmpname = 0
             if hasattr(cls, 'token_variants') and cls.token_variants:
@@ -646,9 +683,15 @@ def do_insertions(insertions, tokens):
         realpos += len(v) - oldi
 
     # leftover tokens
-    if insleft:
+    while insleft:
         # no normal tokens, set realpos to zero
         realpos = realpos or 0
         for p, t, v in itokens:
             yield realpos, t, v
             realpos += len(v)
+        try:
+            index, itokens = insertions.next()
+        except StopIteration:
+            insleft = False
+            break  # not strictly necessary
+

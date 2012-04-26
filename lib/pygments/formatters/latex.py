@@ -5,7 +5,7 @@
 
     Formatter for LaTeX fancyvrb output.
 
-    :copyright: Copyright 2006-2009 by the Pygments team, see AUTHORS.
+    :copyright: Copyright 2006-2012 by the Pygments team, see AUTHORS.
     :license: BSD, see LICENSE for details.
 """
 
@@ -18,12 +18,21 @@ __all__ = ['LatexFormatter']
 
 
 def escape_tex(text, commandprefix):
-    return text.replace('@', '\x00').    \
-                replace('[', '\x01').    \
-                replace(']', '\x02').    \
-                replace('\x00', '@%sZat[]' % commandprefix).\
-                replace('\x01', '@%sZlb[]' % commandprefix).\
-                replace('\x02', '@%sZrb[]' % commandprefix)
+    return text.replace('\\', '\x00'). \
+                replace('{', '\x01'). \
+                replace('}', '\x02'). \
+                replace('\x00', r'\%sZbs{}' % commandprefix). \
+                replace('\x01', r'\%sZob{}' % commandprefix). \
+                replace('\x02', r'\%sZcb{}' % commandprefix). \
+                replace('^', r'\%sZca{}' % commandprefix). \
+                replace('_', r'\%sZus{}' % commandprefix). \
+                replace('&', r'\%sZam{}' % commandprefix). \
+                replace('<', r'\%sZlt{}' % commandprefix). \
+                replace('>', r'\%sZgt{}' % commandprefix). \
+                replace('#', r'\%sZsh{}' % commandprefix). \
+                replace('%', r'\%sZpc{}' % commandprefix). \
+                replace('$', r'\%sZdl{}' % commandprefix). \
+                replace('~', r'\%sZti{}' % commandprefix)
 
 
 DOC_TEMPLATE = r'''
@@ -77,6 +86,9 @@ DOC_TEMPLATE = r'''
 # * \PY@tok@classname sets the \PY@it etc. to reflect the chosen style
 #   for its class.
 # * \PY resets the style, parses the classnames and then calls \PY@do.
+#
+# Tip: to read this code, print it out in substituted form using e.g.
+# >>> print STYLE_TEMPLATE % {'cp': 'PY'}
 
 STYLE_TEMPLATE = r'''
 \makeatletter
@@ -92,6 +104,19 @@ STYLE_TEMPLATE = r'''
 
 %(styles)s
 
+\def\%(cp)sZbs{\char`\\}
+\def\%(cp)sZus{\char`\_}
+\def\%(cp)sZob{\char`\{}
+\def\%(cp)sZcb{\char`\}}
+\def\%(cp)sZca{\char`\^}
+\def\%(cp)sZam{\char`\&}
+\def\%(cp)sZlt{\char`\<}
+\def\%(cp)sZgt{\char`\>}
+\def\%(cp)sZsh{\char`\#}
+\def\%(cp)sZpc{\char`\%%}
+\def\%(cp)sZdl{\char`\$}
+\def\%(cp)sZti{\char`\~}
+%% for compatibility with earlier versions
 \def\%(cp)sZat{@}
 \def\%(cp)sZlb{[}
 \def\%(cp)sZrb{]}
@@ -121,12 +146,12 @@ class LatexFormatter(Formatter):
 
     .. sourcecode:: latex
 
-        \begin{Verbatim}[commandchars=@\[\]]
-        @PY[k][def ]@PY[n+nf][foo](@PY[n][bar]):
-            @PY[k][pass]
+        \begin{Verbatim}[commandchars=\\{\}]
+        \PY{k}{def }\PY{n+nf}{foo}(\PY{n}{bar}):
+            \PY{k}{pass}
         \end{Verbatim}
 
-    The special command used here (``@PY``) and all the other macros it needs
+    The special command used here (``\PY``) and all the other macros it needs
     are output by the `get_style_defs` method.
 
     With the `full` option, a complete LaTeX document is output, including
@@ -177,6 +202,16 @@ class LatexFormatter(Formatter):
         *New in Pygments 0.7.*
 
         *New in Pygments 0.10:* the default is now ``'PY'`` instead of ``'C'``.
+
+    `texcomments`
+        If set to ``True``, enables LaTeX comment lines.  That is, LaTex markup
+        in comment tokens is not escaped so that LaTeX can render it (default:
+        ``False``).  *New in Pygments 1.2.*
+
+    `mathescape`
+        If set to ``True``, enables LaTeX math mode escape in comments. That
+        is, ``'$...$'`` inside a comment will trigger math mode (default:
+        ``False``).  *New in Pygments 1.2.*
     """
     name = 'LaTeX'
     aliases = ['latex', 'tex']
@@ -192,6 +227,8 @@ class LatexFormatter(Formatter):
         self.verboptions = options.get('verboptions', '')
         self.nobackground = get_bool_opt(options, 'nobackground', False)
         self.commandprefix = options.get('commandprefix', 'PY')
+        self.texcomments = get_bool_opt(options, 'texcomments', False)
+        self.mathescape = get_bool_opt(options, 'mathescape', False)
 
         self._create_stylesheet()
 
@@ -227,11 +264,13 @@ class LatexFormatter(Formatter):
                 cmndef += (r'\def\$$@tc##1{\textcolor[rgb]{%s}{##1}}' %
                            rgbcolor(ndef['color']))
             if ndef['border']:
-                cmndef += (r'\def\$$@bc##1{\fcolorbox[rgb]{%s}{%s}{##1}}' %
+                cmndef += (r'\def\$$@bc##1{\setlength{\fboxsep}{0pt}'
+                           r'\fcolorbox[rgb]{%s}{%s}{\strut ##1}}' %
                            (rgbcolor(ndef['border']),
                             rgbcolor(ndef['bgcolor'])))
             elif ndef['bgcolor']:
-                cmndef += (r'\def\$$@bc##1{\colorbox[rgb]{%s}{##1}}' %
+                cmndef += (r'\def\$$@bc##1{\setlength{\fboxsep}{0pt}'
+                           r'\colorbox[rgb]{%s}{\strut ##1}}' %
                            rgbcolor(ndef['bgcolor']))
             if cmndef == '':
                 continue
@@ -247,7 +286,8 @@ class LatexFormatter(Formatter):
         cp = self.commandprefix
         styles = []
         for name, definition in self.cmd2def.iteritems():
-            styles.append(r'\def\%s@tok@%s{%s}' % (cp, name, definition))
+            styles.append(r'\expandafter\def\csname %s@tok@%s\endcsname{%s}' %
+                          (cp, name, definition))
         return STYLE_TEMPLATE % {'cp': self.commandprefix,
                                  'styles': '\n'.join(styles)}
 
@@ -260,18 +300,46 @@ class LatexFormatter(Formatter):
             realoutfile = outfile
             outfile = StringIO()
 
-        outfile.write(r'\begin{Verbatim}[commandchars=@\[\]')
+        outfile.write(r'\begin{Verbatim}[commandchars=\\\{\}')
         if self.linenos:
             start, step = self.linenostart, self.linenostep
             outfile.write(',numbers=left' +
                           (start and ',firstnumber=%d' % start or '') +
                           (step and ',stepnumber=%d' % step or ''))
+        if self.mathescape or self.texcomments:
+            outfile.write(r',codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8}')
         if self.verboptions:
             outfile.write(',' + self.verboptions)
         outfile.write(']\n')
 
         for ttype, value in tokensource:
-            value = escape_tex(value, self.commandprefix)
+            if ttype in Token.Comment:
+                if self.texcomments:
+                    # Try to guess comment starting lexeme and escape it ...
+                    start = value[0:1]
+                    for i in xrange(1, len(value)):
+                        if start[0] != value[i]:
+                            break
+                        start += value[i]
+
+                    value = value[len(start):]
+                    start = escape_tex(start, self.commandprefix)
+
+                    # ... but do not escape inside comment.
+                    value = start + value
+                elif self.mathescape:
+                    # Only escape parts not inside a math environment.
+                    parts = value.split('$')
+                    in_math = False
+                    for i, part in enumerate(parts):
+                        if not in_math:
+                            parts[i] = escape_tex(part, self.commandprefix)
+                        in_math = not in_math
+                    value = '$'.join(parts)
+                else:
+                    value = escape_tex(value, self.commandprefix)
+            else:
+                value = escape_tex(value, self.commandprefix)
             styles = []
             while ttype is not Token:
                 try:
@@ -285,10 +353,10 @@ class LatexFormatter(Formatter):
                 spl = value.split('\n')
                 for line in spl[:-1]:
                     if line:
-                        outfile.write("@%s[%s][%s]" % (cp, styleval, line))
+                        outfile.write("\\%s{%s}{%s}" % (cp, styleval, line))
                     outfile.write('\n')
                 if spl[-1]:
-                    outfile.write("@%s[%s][%s]" % (cp, styleval, spl[-1]))
+                    outfile.write("\\%s{%s}{%s}" % (cp, styleval, spl[-1]))
             else:
                 outfile.write(value)
 
