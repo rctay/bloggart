@@ -55,9 +55,9 @@ def get_template_vals_defaults(template_vals=None):
 
 def render_template(template_name, template_vals=None, theme=None):
   # side-step internal register mechanism
-  if not template.libraries.get('django.templatetags.bloggart_tags', None):
+  if not template.libraries.get('bloggart_tags', None):
     import bloggart_tags as tag_lib
-    template.libraries['django.templatetags.bloggart_tags'] = tag_lib.register
+    template.libraries['bloggart_tags'] = tag_lib.register
 
   template_vals = get_template_vals_defaults(template_vals)
   template_vals.update({'template_name': template_name})
