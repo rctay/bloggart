@@ -7,13 +7,14 @@ from google.appengine.ext import db
 from google.appengine.ext import deferred
 from google.appengine.datastore import entity_pb
 from google.appengine.ext import webapp
-from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 
 import fix_path
 import aetycoon
 import config
 import utils
+
+from django.utils import encoding
 
 
 HTTP_DATE_FMT = "%a, %d %b %Y %H:%M:%S GMT"
@@ -75,7 +76,7 @@ def set(path, body, content_type, indexed=True, **kwargs):
   defaults.update(kwargs)
   content = StaticContent(
       key_name=path,
-      body=body,
+      body=encoding.smart_str(body),
       content_type=content_type,
       indexed=indexed,
       **defaults)
