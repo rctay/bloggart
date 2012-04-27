@@ -101,7 +101,7 @@ class PostHandler(BaseHandler):
           post.updated = post.published = datetime.datetime.now()
         else:# Edit post
           post.updated = datetime.datetime.now()
-        post.publish()
+        post.publish(regenerate=True)
       self.render_to_response("published.html", {
           'post': post,
           'draft': form.cleaned_data['draft']})
@@ -134,7 +134,7 @@ class RegenerateHandler(BaseHandler):
   def post(self):
     generators = self.request.get_all("generators")
 
-    regen = post_deploy.PostRegenerator()
-    deferred.defer(regen.regenerate, classes=generators)
-    deferred.defer(post_deploy.try_post_deploy, force=True)
+    deferred.defer(post_deploy.try_post_deploy, force=True, regenerate_kwargs={
+      'classes': generators
+    })
     self.render_to_response("regenerating.html")
