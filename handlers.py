@@ -134,7 +134,7 @@ class RegenerateHandler(BaseHandler):
   def post(self):
     generators = self.request.get_all("generators")
 
-    regen = post_deploy.PostRegenerator()
-    deferred.defer(regen.regenerate, classes=generators)
-    deferred.defer(post_deploy.try_post_deploy, force=True)
+    deferred.defer(post_deploy.try_post_deploy, force=True, regenerate_kwargs={
+      'classes': generators
+    })
     self.render_to_response("regenerating.html")
