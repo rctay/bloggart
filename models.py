@@ -89,8 +89,7 @@ class BlogPost(db.Model):
     val = (self.title, self.summary, self.tags, self.published)
     return hashlib.sha1(str(val)).hexdigest()
 
-  def publish(self):
-    regenerate = False
+  def publish(self, regenerate=False):
     if not self.path:
       num = 0
       content = None

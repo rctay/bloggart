@@ -101,7 +101,7 @@ class PostHandler(BaseHandler):
           post.updated = post.published = datetime.datetime.now()
         else:# Edit post
           post.updated = datetime.datetime.now()
-        post.publish()
+        post.publish(regenerate=True)
       self.render_to_response("published.html", {
           'post': post,
           'draft': form.clean_data['draft']})
