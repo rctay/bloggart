@@ -1170,6 +1170,8 @@ class Markdown:
         self.stripTopLevelTags = 1
         self.docType = ""
 
+        self.headerOffset = 0
+
         self.textPreprocessors = [HTML_BLOCK_PREPROCESSOR]
 
         self.preprocessors = [HEADER_PREPROCESSOR,
@@ -1401,6 +1403,7 @@ class Markdown:
         m = RE.regExp['header'].match(paragraph[0])
         if m:
             level = len(m.group(1))
+            level += self.headerOffset
             h = self.doc.createElement("h%d" % level)
             parent_elem.appendChild(h)
             for item in self._handleInline(m.group(2).strip()):
