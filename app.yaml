@@ -35,3 +35,7 @@ handlers:
 
 - url: /.*
   script: static.py
+
+libraries:
+- name: django
+  version: "1.2"
