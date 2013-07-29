@@ -1,5 +1,4 @@
 from google.appengine.ext import webapp
-from google.appengine.ext.webapp.util import run_wsgi_app
 
 import fix_path
 import config
@@ -18,11 +17,3 @@ application = webapp.WSGIApplication([
   (config.url_prefix + '/admin/post/delete/(\d+)', handlers.DeleteHandler),
   (config.url_prefix + '/admin/post/preview/(\d+)', handlers.PreviewHandler),
 ])
-
-
-def main():
-  run_wsgi_app(application)
-
-
-if __name__ == '__main__':
-  main()

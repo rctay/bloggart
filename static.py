@@ -7,7 +7,6 @@ from google.appengine.ext import db
 from google.appengine.ext import deferred
 from google.appengine.datastore import entity_pb
 from google.appengine.ext import webapp
-from google.appengine.ext.webapp.util import run_wsgi_app
 
 import fix_path
 import aetycoon
@@ -178,11 +177,3 @@ class StaticContentHandler(webapp.RequestHandler):
 application = webapp.WSGIApplication([
                 ('(/.*)', StaticContentHandler),
               ])
-
-
-def main():
-  run_wsgi_app(application)
-
-
-if __name__ == '__main__':
-  main()

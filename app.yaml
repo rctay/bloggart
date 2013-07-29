@@ -22,11 +22,11 @@ handlers:
   login: admin
 
 - url: /_ah/queue/deferred
-  script: deferred.py
+  script: google.appengine.ext.deferred.application
   login: admin
 
 - url: /admin/.*
-  script: admin.py
+  script: admin.application
   login: admin
 
 - url: /static/([^/]+)/(.*)
@@ -34,7 +34,7 @@ handlers:
   upload: themes/[^/]+/static/.*
 
 - url: /.*
-  script: static.py
+  script: static.application
 
 libraries:
 - name: django
