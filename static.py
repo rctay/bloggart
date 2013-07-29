@@ -181,7 +181,6 @@ application = webapp.WSGIApplication([
 
 
 def main():
-  fix_path.fix_sys_path()
   run_wsgi_app(application)
 
 
