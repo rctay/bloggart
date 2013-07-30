@@ -4,3 +4,6 @@
 [submodule "themes/coolblue"]
 	path = themes/coolblue
 	url = git://github.com/rctay/bloggart-theme-coolblue.git
+[submodule "themes/mojombo"]
+	path = themes/mojombo
+	url = https://github.com/rctay/bloggart-theme-mojombo
