@@ -2,6 +2,8 @@ import os
 from google.appengine.api.labs import taskqueue
 from google.appengine.ext import deferred
 
+import fix_path
+
 import config
 import models
 import static
