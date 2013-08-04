@@ -12,10 +12,48 @@ import post_deploy
 import utils
 
 from django import forms
-from google.appengine.ext.db import djangoforms
 
 
-class PostForm(djangoforms.ModelForm):
+class ModelFormOptions(object):
+  """A simple class to hold internal options for a ModelForm class.
+
+  Instance attributes:
+    model: a db.Model class, or None
+    fields: list of field names to be defined, or None
+    exclude: list of field names to be skipped, or None
+
+  These instance attributes are copied from the 'Meta' class that is
+  usually present in a ModelForm class, and all default to None.
+  """
+
+  def __init__(self, options=None):
+    self.model = getattr(options, 'model', None)
+    self.fields = getattr(options, 'fields', None)
+    self.exclude = getattr(options, 'exclude', None)
+
+
+class InitialDataForm(object):
+  def __init__(self, instance=None, initial=None, *args, **kwargs):
+    opts = ModelFormOptions(getattr(self, 'meta', None))
+    object_data = {}
+    if instance is not None:
+      for name, prop in instance.properties().iteritems():
+        if opts.fields and name not in opts.fields:
+          continue
+        if opts.exclude and name in opts.exclude:
+          continue
+        if hasattr(prop, 'get_value_for_form'):
+          object_data[name] = prop.get_value_for_form(instance)
+        else:
+          object_data[name] = getattr(instance, name)
+    if initial is not None:
+      object_data.update(initial)
+
+    kwargs['initial'] = object_data
+    super(InitialDataForm, self).__init__(*args, **kwargs)
+
+
+class PostForm(InitialDataForm, forms.Form):
   title = forms.CharField(widget=forms.TextInput(attrs={'id':'name'}))
   body = forms.CharField(widget=forms.Textarea(attrs={
       'id':'message',
@@ -90,7 +128,20 @@ class PostHandler(BaseHandler):
     form = PostForm(data=self.request.POST, instance=post,
                     initial={'draft': post and post.published is None})
     if form.is_valid():
-      post = form.save(commit=False)
+      data = {
+        'title': form.cleaned_data['title'],
+        'body': form.cleaned_data['body'],
+        'body_markup': form.cleaned_data['body_markup'],
+      }
+      if post is None:
+        post = models.BlogPost(**data)
+      else:
+        for name, value in data.iteritems():
+          setattr(post, name, value)
+
+      post.tags = post.properties()['tags'] \
+          .make_value_from_form(form.cleaned_data['tags'])
+
       if form.cleaned_data['draft']:# Draft post
         post.published = datetime.datetime.max
         post.put()
