@@ -32,7 +32,7 @@ class PostRegenerator(object):
             deferred.defer(generator_class.generate_resource, None, dep)
       post.put()
     if len(posts) == batch_size:
-      deferred.defer(self.regenerate, batch_size, posts[-1].published)
+      deferred.defer(self.regenerate, batch_size, posts[-1].published, classes)
 
 
 post_deploy_tasks = []
