@@ -7,7 +7,6 @@ from google.appengine.ext import db
 from google.appengine.ext import deferred
 from google.appengine.datastore import entity_pb
 from google.appengine.ext import webapp
-from google.appengine.ext.webapp.util import run_wsgi_app
 
 import fix_path
 import aetycoon
@@ -132,7 +131,7 @@ def canonical_redirect(func):
 class StaticContentHandler(webapp.RequestHandler):
   def output_content(self, content, serve=True):
     if content.content_type:
-      self.response.headers['Content-Type'] = content.content_type
+      self.response.headers['Content-Type'] = encoding.smart_str(content.content_type)
     last_modified = content.last_modified.strftime(HTTP_DATE_FMT)
     self.response.headers['Last-Modified'] = last_modified
     self.response.headers['ETag'] = '"%s"' % (content.etag,)
@@ -187,12 +186,3 @@ class StaticContentHandler(webapp.RequestHandler):
 application = webapp.WSGIApplication([
                 ('(/.*)', StaticContentHandler),
               ])
-
-
-def main():
-  fix_path.fix_sys_path()
-  run_wsgi_app(application)
-
-
-if __name__ == '__main__':
-  main()

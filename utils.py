@@ -7,22 +7,9 @@ from google.appengine.ext import webapp
 
 import config
 
-# requires django internally
-from google.appengine.ext.webapp.template import _swap_settings
-
 import django.conf
 from django import template
 from django.template import loader
-
-BASE_DIR = os.path.dirname(__file__)
-
-if isinstance(config.theme, (list, tuple)):
-  TEMPLATE_DIRS = config.theme
-else:
-  TEMPLATE_DIRS = [os.path.abspath(os.path.join(BASE_DIR, 'themes/default'))]
-  if config.theme and config.theme != 'default':
-    TEMPLATE_DIRS.insert(0,
-                         os.path.abspath(os.path.join(BASE_DIR, 'themes', config.theme)))
 
 
 def slugify(s):
@@ -61,12 +48,8 @@ def render_template(template_name, template_vals=None, theme=None):
 
   template_vals = get_template_vals_defaults(template_vals)
   template_vals.update({'template_name': template_name})
-  old_settings = _swap_settings({'TEMPLATE_DIRS': TEMPLATE_DIRS})
-  try:
-    tpl = loader.get_template(template_name)
-    rendered = tpl.render(template.Context(template_vals))
-  finally:
-    _swap_settings(old_settings)
+  tpl = loader.get_template(template_name)
+  rendered = tpl.render(template.Context(template_vals))
   return rendered
 
 
