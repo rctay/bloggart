@@ -91,6 +91,8 @@ def try_post_deploy(force=False, **kwargs):
   """
   version_info = models.VersionInfo.get_by_key_name(
       os.environ['CURRENT_VERSION_ID'])
+  is_new = False
+
   if not version_info:
     q = models.VersionInfo.all()
     q.order('-bloggart_major')
@@ -108,12 +110,13 @@ def try_post_deploy(force=False, **kwargs):
         bloggart_minor = BLOGGART_VERSION[1],
         bloggart_rev = BLOGGART_VERSION[2])
       version_info.put()
-
-      post_deploy(version_info, is_new=False)
     else:
-      post_deploy(version_info)
-  elif force: # also implies version_info is available
-    post_deploy(version_info, is_new=False, force=True, **kwargs)
+      is_new = True
+
+  if force:
+    kwargs['force'] = force
+
+  post_deploy(version_info, is_new=is_new, **kwargs)
 
 def post_deploy(previous_version, is_new=True, **kwargs):
   """
