@@ -89,8 +89,10 @@ def _regenerate_sitemap():
   s.seek(0)
   renderedgz = s.read()
   static.set('/sitemap.xml.gz',renderedgz, 'application/x-gzip', False)
-  if config.google_sitemap_ping:
-      ping_googlesitemap()
+  if config.google_sitemap_ping \
+      and not (getattr(config, 'google_sitemap_ping_nodev', True) \
+          and os.environ['SERVER_SOFTWARE'].startswith('Development/')):
+    ping_googlesitemap()
 
 def ping_googlesitemap():
   import urllib
