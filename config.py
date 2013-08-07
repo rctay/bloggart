@@ -59,6 +59,10 @@ hubbub_hub_url = 'http://pubsubhubbub.appspot.com/'
 # see: http://www.google.com/support/webmasters/bin/answer.py?hl=en&answer=34609 for more information
 google_sitemap_ping = True
 
+# If True, disables pinging Google Sitemap when in development
+# Defaults to True
+google_sitemap_ping_nodev = True
+
 # If you want to use Google Site verification, go to
 # https://www.google.com/webmasters/tools/ , add your site, choose the 'upload
 # an html file' method, then set the NAME of the file below.
